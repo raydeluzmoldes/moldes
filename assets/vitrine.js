@@ -1,4 +1,24 @@
 (function () {
+  // Origem das vendas: os links de compra levam sck=vitrine para o relatório "Origem" da Hotmart.
+  // Se o visitante chegou por um link com ?origem=instagram (ou utm_source=...), vira sck=vitrine_instagram.
+  // A origem fica guardada na sessão para valer também nas páginas de produto.
+  var origem = '';
+  try {
+    var params = new URLSearchParams(location.search);
+    origem = (params.get('origem') || params.get('utm_source') || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 30);
+    if (origem) sessionStorage.setItem('vitrine-origem', origem);
+    else origem = sessionStorage.getItem('vitrine-origem') || '';
+  } catch (e) { /* sem sessionStorage: segue só com "vitrine" */ }
+  if (origem) {
+    document.querySelectorAll('a[href*="hotmart.com"]').forEach(function (a) {
+      try {
+        var u = new URL(a.href);
+        u.searchParams.set('sck', 'vitrine_' + origem);
+        a.href = u.toString();
+      } catch (e) { /* link inválido: deixa como está */ }
+    });
+  }
+
   // Botões "Compartilhar": abre o menu do celular ou copia o link.
   document.querySelectorAll('[data-compartilhar]').forEach(function (botao) {
     var rotulo = botao.querySelector('span');

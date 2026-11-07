@@ -58,7 +58,7 @@ img { max-width: 100%; }
 .compartilhar {
   display: inline-flex; align-items: center; gap: 8px;
   min-height: 44px; padding: 10px 18px; border-radius: 999px; cursor: pointer;
-  font: 500 15px var(--corpo);
+  font: 500 15px var(--corpo); text-decoration: none;
   color: var(--texto); background: var(--superficie);
   border: 1px solid var(--linha);
   transition: border-color .15s, transform .15s;
@@ -167,6 +167,21 @@ img { max-width: 100%; }
 .outros { margin-top: 72px; }
 .outros h2.titulo-secao { margin: 0 0 22px; text-align: center; font: 500 28px var(--titulo); }
 
+/* ---------- WhatsApp ---------- */
+.whatsapp-flutuante {
+  position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 11;
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: 52px; padding: 12px 20px 12px 16px; border-radius: 999px;
+  background: #25d366; color: #073b1c;
+  font: 700 15px var(--corpo); text-decoration: none;
+  box-shadow: 0 8px 24px -6px rgba(0, 0, 0, .35);
+  transition: transform .25s ease;
+}
+.whatsapp-flutuante svg { width: 24px; height: 24px; flex: none; }
+.whatsapp-flutuante:focus-visible { outline: 3px solid var(--texto); outline-offset: 3px; }
+.duvida svg { color: #1da851; }
+.produto-acoes { display: flex; flex-wrap: wrap; gap: 10px; }
+
 .barra-compra { display: none; }
 
 /* ---------- Celular ---------- */
@@ -184,6 +199,8 @@ img { max-width: 100%; }
     transform: translateY(110%); transition: transform .25s ease;
   }
   .barra-compra.visivel { transform: none; }
+  /* o botão do WhatsApp sobe quando a barra de compra aparece */
+  body:has(.barra-compra.visivel) .whatsapp-flutuante { transform: translateY(-74px); }
   .barra-compra .preco { font-size: 20px; }
   .barra-compra .botao { padding: 12px 26px; }
 }
@@ -205,6 +222,12 @@ img { max-width: 100%; }
   .marca { font-size: 20px; }
   .voltar-longo { display: none; }
   .voltar-curto { display: inline; }
+  /* no celular o botão do WhatsApp vira só o ícone */
+  .whatsapp-flutuante { width: 56px; height: 56px; padding: 0; justify-content: center; }
+  .whatsapp-flutuante span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .whatsapp-flutuante svg { width: 28px; height: 28px; }
+  .rodape { padding-bottom: 96px; }
+  .produto-acoes > * { flex: 1 1 100%; justify-content: center; }
 }
 @media (max-width: 360px) {
   .grade { gap: 10px; }
@@ -222,6 +245,7 @@ img { max-width: 100%; }
   .card:hover { transform: translateY(-3px); }
   .card:hover .capa img { transform: scale(1.03); }
   .voltar:hover { color: #fff; }
+  .whatsapp-flutuante:hover { transform: translateY(-2px); }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; }

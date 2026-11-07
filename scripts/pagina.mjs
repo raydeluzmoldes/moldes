@@ -35,10 +35,42 @@ const ICONES = {
   cadeado: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
   email: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>',
   escudo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg>',
+  whatsapp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/><path d="M15.6 14.2v1.1a.8.8 0 0 1-.9.8 7.7 7.7 0 0 1-3.4-1.2 7.6 7.6 0 0 1-2.3-2.3 7.7 7.7 0 0 1-1.2-3.4.8.8 0 0 1 .8-.9h1.1a.8.8 0 0 1 .8.7c.1.4.2.7.3 1.1a.8.8 0 0 1-.2.8l-.5.5a6.2 6.2 0 0 0 2.3 2.3l.5-.5a.8.8 0 0 1 .8-.2c.4.1.7.2 1.1.3a.8.8 0 0 1 .7.8Z"/></svg>',
   voltar: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-3px"><path d="M15 18l-6-6 6-6"/></svg>',
 };
 
-function cabeca({ titulo, descricao, url, imagem, raiz, versao }) {
+// Link de compra com o código de origem da Hotmart (sck), para o relatório "Origem".
+// O vitrine.js troca por vitrine_<origem> quando o visitante chega com ?origem=instagram, etc.
+function comRastreio(link) {
+  try {
+    const u = new URL(link);
+    if (!u.hostname.endsWith('hotmart.com')) return link;
+    if (!u.searchParams.has('sck')) u.searchParams.set('sck', 'vitrine');
+    return u.toString();
+  } catch {
+    return link;
+  }
+}
+
+function linkWhatsapp(config, mensagem) {
+  const numero = String(config.whatsapp ?? '').replace(/\D/g, '');
+  if (!numero) return '';
+  return `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`;
+}
+
+function botaoWhatsappFlutuante(href) {
+  if (!href) return '';
+  return `<a class="whatsapp-flutuante" href="${esc(href)}" target="_blank" rel="noopener" aria-label="Tirar dúvida no WhatsApp">${ICONES.whatsapp}<span>Dúvidas? Chame no WhatsApp</span></a>`;
+}
+
+const semEmojiInicial = (s) => String(s).replace(/^[^\p{L}\p{N}]+/u, '');
+
+function analytics(token) {
+  if (!token) return '';
+  return `\n<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='${esc(JSON.stringify({ token }))}'></script>`;
+}
+
+function cabeca({ titulo, descricao, url, imagem, raiz, versao, tokenAnalytics }) {
   return `<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${esc(titulo)}</title>
@@ -55,7 +87,7 @@ ${imagem ? `<meta property="og:image" content="${esc(imagem)}">\n<meta name="twi
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;600&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="${raiz}assets/estilo.css?v=${versao}">`;
+<link rel="stylesheet" href="${raiz}assets/estilo.css?v=${versao}">${analytics(tokenAnalytics)}`;
 }
 
 function rodape({ agora }) {
@@ -117,6 +149,7 @@ ${cabeca({
     imagem: `${urlSite}assets/logo-compartilhar.jpg`,
     raiz: '',
     versao,
+    tokenAnalytics: config.cloudflare_analytics_token,
   })}
 </head>
 <body>
@@ -137,6 +170,7 @@ ${cabeca({
   </main>
 
   ${rodape({ agora })}
+  ${botaoWhatsappFlutuante(linkWhatsapp(config, `Olá! Vim pela vitrine da ${nome} e tenho uma dúvida.`))}
   <script src="assets/vitrine.js?v=${versao}" defer></script>
 </body>
 </html>
@@ -150,6 +184,8 @@ export function renderProduto({ config, produto: p, outros, urlSite, agora }) {
   const preco = formatarPreco(p.preco, p.moeda);
   const urlProduto = urlSite ? `${urlSite}produto/${p.slug}/` : '';
   const sufixoPreco = p.assinatura ? '<small> /assinatura</small>' : '';
+  const compra = comRastreio(p.link);
+  const whatsapp = linkWhatsapp(config, `Olá! Tenho uma dúvida sobre o produto "${semEmojiInicial(p.nome)}".`);
 
   const garantias = [
     `<li>${ICONES.email}<span>Produto digital: o acesso chega no seu e-mail após a confirmação do pagamento.</span></li>`,
@@ -182,6 +218,7 @@ ${cabeca({
     imagem: p.imagem || `${urlSite}assets/logo-compartilhar.jpg`,
     raiz,
     versao,
+    tokenAnalytics: config.cloudflare_analytics_token,
   })}
 <script type="application/ld+json">${JSON.stringify(jsonLd).replace(/</g, '\\u003c')}</script>
 </head>
@@ -201,7 +238,7 @@ ${cabeca({
       <div class="produto-info">
         <h1>${esc(p.nome)}</h1>
         ${preco ? `<p class="preco-grande">${esc(preco)}${sufixoPreco}</p>` : ''}
-        <a class="botao botao-grande" id="cta" href="${esc(p.link)}" target="_blank" rel="noopener">Comprar agora</a>
+        <a class="botao botao-grande" id="cta" href="${esc(compra)}" target="_blank" rel="noopener">Comprar agora</a>
         <ul class="garantias">
           ${garantias}
         </ul>
@@ -210,6 +247,7 @@ ${cabeca({
           ${paragrafos(p.descricao)}
         </section>` : ''}
         <div class="produto-acoes">
+          ${whatsapp ? `<a class="compartilhar duvida" href="${esc(whatsapp)}" target="_blank" rel="noopener">${ICONES.whatsapp}<span>Tirar dúvida no WhatsApp</span></a>` : ''}
           <button class="compartilhar" type="button" data-compartilhar>${ICONES.compartilhar}<span>Compartilhar este produto</span></button>
         </div>
       </div>
@@ -224,10 +262,11 @@ ${cabeca({
 
   <div class="barra-compra" id="barra-compra">
     ${preco ? `<span class="preco">${esc(preco)}${sufixoPreco}</span>` : '<span></span>'}
-    <a class="botao" href="${esc(p.link)}" target="_blank" rel="noopener">Comprar</a>
+    <a class="botao" href="${esc(compra)}" target="_blank" rel="noopener">Comprar</a>
   </div>
 
   ${rodape({ agora })}
+  ${botaoWhatsappFlutuante(whatsapp)}
   <script src="${raiz}assets/vitrine.js?v=${versao}" defer></script>
 </body>
 </html>

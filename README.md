@@ -43,6 +43,29 @@ na página de checkout e publica no GitHub Pages:
 
 Os IDs aparecem no log do workflow e em `produtos.json` no site publicado.
 
+## WhatsApp
+
+`"whatsapp"` em `vitrine.json` (só números, com 55 + DDD). Aparece um botão flutuante em todas as
+páginas e um botão "Tirar dúvida no WhatsApp" em cada produto, já com a mensagem preenchida.
+Deixe vazio (`""`) para esconder.
+
+## Origem das vendas (Hotmart)
+
+Todo link de compra da vitrine leva `sck=vitrine`. Na Hotmart, veja em **Relatórios → Origem das
+vendas → aba SCK**.
+
+Para saber de qual rede social veio a venda, divulgue a vitrine com `?origem=`:
+
+- Instagram: `https://raydeluzmoldes.github.io/moldes/?origem=instagram` → `sck=vitrine_instagram`
+- WhatsApp: `https://raydeluzmoldes.github.io/moldes/?origem=whatsapp` → `sck=vitrine_whatsapp`
+
+Funciona também no link de um produto específico.
+
+## Visitas
+
+Cloudflare Web Analytics (grátis, sem cookies): cole o token em `"cloudflare_analytics_token"`
+no `vitrine.json`. Os números ficam em dash.cloudflare.com → Analytics & Logs → Web Analytics.
+
 ## Visual
 
 - `assets/logo.jpg`: logo do topo da vitrine; `assets/icone.png`: ícone da aba e do topo das páginas de produto;
