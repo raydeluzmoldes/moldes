@@ -44,10 +44,16 @@
   // Barra fixa de compra no celular: aparece quando o botão principal sai da tela.
   var cta = document.getElementById('cta');
   var barra = document.getElementById('barra-compra');
-  if (cta && barra && 'IntersectionObserver' in window) {
-    new IntersectionObserver(function (entradas) {
-      var e = entradas[0];
-      barra.classList.toggle('visivel', !e.isIntersecting && e.boundingClientRect.top < 0);
-    }).observe(cta);
+  if (cta && barra) {
+    var agendado = false;
+    var atualizar = function () {
+      agendado = false;
+      barra.classList.toggle('visivel', cta.getBoundingClientRect().bottom < 0);
+    };
+    window.addEventListener('scroll', function () {
+      if (!agendado) { agendado = true; requestAnimationFrame(atualizar); }
+    }, { passive: true });
+    window.addEventListener('resize', atualizar);
+    atualizar();
   }
 })();

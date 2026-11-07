@@ -3,6 +3,7 @@
 
 import { readFile, writeFile, mkdir, cp, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
+import sharp from 'sharp';
 import { renderIndex, renderProduto } from './pagina.mjs';
 
 const ID = process.env.HOTMART_CLIENT_ID;
@@ -97,6 +98,29 @@ async function dadosDoCheckout(link, ucode) {
   return resultado;
 }
 
+// As imagens da Hotmart chegam a 1 MB; geramos versões leves em WebP para o celular.
+const LARGURAS = [400, 800];
+async function otimizarImagem(url, slug) {
+  try {
+    const r = await fetch(url, { signal: AbortSignal.timeout(30000) });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const original = Buffer.from(await r.arrayBuffer());
+    const arquivos = {};
+    for (const largura of LARGURAS) {
+      const caminho = `img/${slug}-${largura}.webp`;
+      await sharp(original)
+        .resize({ width: largura, height: largura, fit: 'cover', withoutEnlargement: true })
+        .webp({ quality: 80 })
+        .toFile(`site/${caminho}`);
+      arquivos[largura] = caminho;
+    }
+    return arquivos;
+  } catch (e) {
+    console.warn(`⚠ Imagem de "${slug}" não otimizada (${e.message}); usando a original.`);
+    return null;
+  }
+}
+
 function criarSlug(texto) {
   const palavras = String(texto)
     .normalize('NFD').replace(/[̀-ͯ]/g, '')
@@ -172,6 +196,10 @@ const agora = new Date();
 await rm('site', { recursive: true, force: true });
 await mkdir('site', { recursive: true });
 await cp('assets', 'site/assets', { recursive: true });
+await mkdir('site/img', { recursive: true });
+for (const p of vitrine) {
+  p.imagens = p.imagem ? await otimizarImagem(p.imagem, p.slug) : null;
+}
 await writeFile('site/index.html', renderIndex({ config, produtos: vitrine, urlSite, agora }));
 for (const p of vitrine) {
   const outros = vitrine.filter((o) => o.id !== p.id).slice(0, 4);

@@ -25,6 +25,8 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
+          cache: npm
+      - run: npm ci --no-fund --no-audit
       - name: Buscar produtos na Hotmart e gerar a página
         run: node scripts/build.mjs
         env:

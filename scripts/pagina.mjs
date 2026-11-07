@@ -68,12 +68,24 @@ function rodape({ agora }) {
   </footer>`;
 }
 
+// <img> com versões leves (srcset) quando existem; senão, a imagem original.
+function imagemHtml(p, raiz, { sizes, alt = '', prioridade = false }) {
+  if (!p.imagem) {
+    return `<span class="sem-imagem" aria-hidden="true">${esc([...p.nome.trim()][0] ?? '•')}</span>`;
+  }
+  const carga = prioridade ? 'fetchpriority="high"' : 'loading="lazy"';
+  if (!p.imagens) {
+    return `<img src="${esc(p.imagem)}" alt="${esc(alt)}" ${carga} decoding="async">`;
+  }
+  const srcset = Object.entries(p.imagens).map(([w, arq]) => `${raiz}${arq} ${w}w`).join(', ');
+  const maior = Object.values(p.imagens).at(-1);
+  return `<img src="${raiz}${maior}" srcset="${srcset}" sizes="${sizes}" width="800" height="800" alt="${esc(alt)}" ${carga} decoding="async">`;
+}
+
 function card(p, raiz) {
   const preco = formatarPreco(p.preco, p.moeda);
   const href = `${raiz}produto/${p.slug}/`;
-  const imagem = p.imagem
-    ? `<img src="${esc(p.imagem)}" alt="" loading="lazy" decoding="async">`
-    : `<span class="sem-imagem" aria-hidden="true">${esc([...p.nome.trim()][0] ?? '•')}</span>`;
+  const imagem = imagemHtml(p, raiz, { sizes: '(max-width: 600px) 50vw, 290px' });
   return `
       <li class="card" data-busca="${esc(semAcento(`${p.nome} ${p.descricao}`))}">
         <a class="capa" href="${href}" tabindex="-1" aria-hidden="true">${imagem}</a>
@@ -177,14 +189,14 @@ ${cabeca({
   <header class="barra">
     <div class="envoltorio barra-conteudo">
       <a class="marca" href="${raiz}"><img src="${raiz}assets/icone.png" alt="" width="40" height="40"><span>${esc(nome)}</span></a>
-      <a class="voltar" href="${raiz}">${ICONES.voltar} <span>Todos os produtos</span></a>
+      <a class="voltar" href="${raiz}">${ICONES.voltar} <span class="voltar-longo">Todos os produtos</span><span class="voltar-curto">Voltar</span></a>
     </div>
   </header>
 
   <main class="produto envoltorio">
     <div class="produto-grade">
       <div class="produto-imagem">
-        ${p.imagem ? `<img src="${esc(p.imagem)}" alt="${esc(p.nome)}">` : `<span class="sem-imagem" aria-hidden="true">${esc([...p.nome.trim()][0] ?? '•')}</span>`}
+        ${imagemHtml(p, raiz, { sizes: '(max-width: 760px) 100vw, 520px', alt: p.nome, prioridade: true })}
       </div>
       <div class="produto-info">
         <h1>${esc(p.nome)}</h1>

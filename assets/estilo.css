@@ -48,23 +48,21 @@ img { max-width: 100%; }
 
 /* ---------- Botões ---------- */
 .botao {
-  display: inline-block;
-  padding: 10px 20px; border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 44px; padding: 10px 20px; border-radius: 999px;
   background: var(--botao); color: var(--botao-texto);
   font: 700 15px var(--corpo); text-decoration: none; text-align: center;
   transition: background-color .15s, transform .15s;
 }
-.botao:hover { background: var(--botao-hover); }
 .botao:active { transform: scale(.97); }
 .compartilhar {
   display: inline-flex; align-items: center; gap: 8px;
-  padding: 10px 18px; border-radius: 999px; cursor: pointer;
+  min-height: 44px; padding: 10px 18px; border-radius: 999px; cursor: pointer;
   font: 500 15px var(--corpo);
   color: var(--texto); background: var(--superficie);
   border: 1px solid var(--linha);
   transition: border-color .15s, transform .15s;
 }
-.compartilhar:hover { border-color: var(--icone); }
 .compartilhar:active { transform: scale(.97); }
 .compartilhar svg { width: 18px; height: 18px; flex: none; }
 :focus-visible { outline: 2px solid var(--icone); outline-offset: 3px; }
@@ -76,7 +74,6 @@ img { max-width: 100%; }
 .hero .subtitulo { margin: 2px auto 4px; max-width: 34em; color: #e6d9ee; font-size: 17px; text-wrap: pretty; }
 .hero .contagem { margin: 0 0 22px; color: #bca7ca; font-size: 14px; }
 .hero .compartilhar { background: transparent; color: #fff; border-color: rgba(255, 255, 255, .35); }
-.hero .compartilhar:hover { border-color: var(--ouro); }
 .hero :focus-visible { outline-color: var(--ouro); }
 
 .vitrine { padding-top: 36px; }
@@ -104,10 +101,8 @@ img { max-width: 100%; }
   box-shadow: var(--sombra);
   transition: transform .2s ease;
 }
-.card:hover { transform: translateY(-3px); }
 .capa { display: block; aspect-ratio: 1; background: var(--placeholder); overflow: hidden; }
 .capa img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .4s ease; }
-.card:hover .capa img { transform: scale(1.03); }
 .sem-imagem {
   width: 100%; height: 100%; display: grid; place-items: center;
   font: 500 64px var(--titulo); color: var(--icone);
@@ -139,10 +134,14 @@ img { max-width: 100%; }
 /* ---------- Página do produto ---------- */
 .barra { background: var(--marca); color: #fff; }
 .barra-conteudo { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 64px; }
-.marca { display: flex; align-items: center; gap: 10px; color: #fff; text-decoration: none; font: 500 22px/1 var(--titulo); }
-.marca img { width: 40px; height: 40px; border-radius: 50%; }
-.voltar { color: #e6d9ee; text-decoration: none; font-size: 14px; white-space: nowrap; }
-.voltar:hover { color: #fff; }
+.marca { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 44px; color: #fff; text-decoration: none; font: 500 22px/1 var(--titulo); }
+.marca span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.marca img { flex: none; width: 40px; height: 40px; border-radius: 50%; }
+.voltar {
+  display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding: 0 4px;
+  color: #e6d9ee; text-decoration: none; font-size: 14px; white-space: nowrap;
+}
+.voltar-curto { display: none; }
 .barra :focus-visible { outline-color: var(--ouro); }
 
 .produto { padding-top: 36px; }
@@ -156,7 +155,7 @@ img { max-width: 100%; }
 .produto-info h1 { margin: 0 0 14px; font: 500 clamp(28px, 3.6vw, 38px)/1.15 var(--titulo); text-wrap: balance; }
 .preco-grande { margin: 0 0 18px; font-size: 30px; font-weight: 700; }
 .preco-grande small { font-size: 15px; font-weight: 400; color: var(--suave); }
-.botao-grande { display: block; padding: 16px 24px; border-radius: 14px; font-size: 17px; }
+.botao-grande { display: flex; width: 100%; min-height: 54px; padding: 14px 24px; border-radius: 14px; font-size: 17px; }
 .garantias { list-style: none; margin: 20px 0; padding: 0; display: grid; gap: 10px; color: var(--suave); font-size: 14.5px; }
 .garantias li { display: flex; gap: 10px; align-items: flex-start; }
 .garantias svg { flex: none; width: 18px; height: 18px; margin-top: 2px; color: var(--icone); }
@@ -199,8 +198,30 @@ img { max-width: 100%; }
   .rodape-card { flex-direction: column; align-items: stretch; gap: 8px; }
   .rodape-card .preco { font-size: 17px; }
   .rodape-card .botao { padding: 9px 12px; }
-  .marca span { font-size: 20px; }
-  .voltar span { display: none; }
+  /* um produto sozinho fica centralizado em vez de colado à esquerda */
+  .grade:has(> .card:only-child) { grid-template-columns: minmax(0, calc(50% - 6px)); justify-content: center; }
+  .hero .logo { width: min(220px, 58vw); }
+  .hero .subtitulo { font-size: 16px; padding: 0 8px; }
+  .marca { font-size: 20px; }
+  .voltar-longo { display: none; }
+  .voltar-curto { display: inline; }
+}
+@media (max-width: 360px) {
+  .grade { gap: 10px; }
+  .info { padding: 10px; }
+  .info h2 { font-size: 14px; }
+  .rodape-card .botao { padding: 8px 10px; font-size: 14px; }
+  .marca { font-size: 18px; gap: 8px; }
+  .marca img { width: 34px; height: 34px; }
+}
+/* efeitos de passar o mouse só onde existe mouse (no celular eles "grudam" após o toque) */
+@media (hover: hover) {
+  .botao:hover { background: var(--botao-hover); }
+  .compartilhar:hover { border-color: var(--icone); }
+  .hero .compartilhar:hover { border-color: var(--ouro); }
+  .card:hover { transform: translateY(-3px); }
+  .card:hover .capa img { transform: scale(1.03); }
+  .voltar:hover { color: #fff; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; }
