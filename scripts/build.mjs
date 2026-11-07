@@ -1,9 +1,9 @@
 // Busca os produtos ativos na Hotmart e gera a vitrine em ./site
 // Uso: HOTMART_CLIENT_ID=... HOTMART_CLIENT_SECRET=... node scripts/build.mjs
 
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, cp, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { renderPagina } from './pagina.mjs';
+import { renderIndex, renderProduto } from './pagina.mjs';
 
 const ID = process.env.HOTMART_CLIENT_ID;
 const SECRET = process.env.HOTMART_CLIENT_SECRET;
@@ -57,20 +57,56 @@ async function listarTudo(caminho, token) {
   return itens;
 }
 
-// A API não devolve a imagem do produto; a página de checkout traz ela no og:image.
-async function imagemDoCheckout(link) {
+// A API não devolve imagem nem descrição. A página de checkout traz as duas:
+// a imagem no og:image e os dados do produto no JSON __NUXT_DATA__.
+async function dadosDoCheckout(link, ucode) {
+  let html;
   try {
     const r = await fetch(link, {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; vitrine-produtos)' },
       signal: AbortSignal.timeout(20000),
     });
-    if (!r.ok) return null;
-    const html = await r.text();
-    const m = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i);
-    return m ? m[1] : null;
+    if (!r.ok) return {};
+    html = await r.text();
   } catch {
-    return null;
+    return {};
   }
+
+  const og = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)?.[1] ?? null;
+  const resultado = { imagem: og, descricao: '' };
+
+  const bloco = html.match(/<script[^>]*id=["']__NUXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i);
+  if (!bloco) return resultado;
+  let dados;
+  try {
+    dados = JSON.parse(bloco[1]);
+  } catch {
+    return resultado;
+  }
+  // No formato do Nuxt, os valores de cada objeto são índices dentro do próprio array.
+  const valor = (i) => (typeof i === 'number' ? dados[i] : i);
+  const texto = (i) => (typeof valor(i) === 'string' ? valor(i).trim() : '');
+  for (const o of dados) {
+    if (!o || typeof o !== 'object' || Array.isArray(o)) continue;
+    if (!('description' in o && 'ucode' in o && 'coverPhoto' in o)) continue;
+    if (texto(o.ucode) !== ucode) continue;
+    resultado.descricao = texto(o.description);
+    resultado.imagem = texto(o.coverPhoto) || og;
+    break;
+  }
+  return resultado;
+}
+
+function criarSlug(texto) {
+  const palavras = String(texto)
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
+  let slug = '';
+  for (const p of palavras) {
+    if (slug && slug.length + p.length + 1 > 60) break;
+    slug = slug ? `${slug}-${p}` : p;
+  }
+  return slug || 'produto';
 }
 
 async function lerJson(arquivo, padrao) {
@@ -79,7 +115,7 @@ async function lerJson(arquivo, padrao) {
 }
 
 function descobrirUrlSite(config) {
-  if (config.url) return config.url;
+  if (config.url) return config.url.endsWith('/') ? config.url : `${config.url}/`;
   const repoCompleto = process.env.GITHUB_REPOSITORY;
   if (!repoCompleto) return '';
   const [dono, repo] = repoCompleto.toLowerCase().split('/');
@@ -104,31 +140,48 @@ for (const p of produtos) {
   }
   const checkout = oferta.direct_offer_link_for_creator || `https://pay.hotmart.com?off=${oferta.code}`;
   const extra = extras[String(p.id)] ?? {};
+  const doCheckout = await dadosDoCheckout(checkout, p.ucode);
+  const nome = extra.nome || p.name;
   vitrine.push({
     id: p.id,
-    nome: extra.nome || p.name,
-    descricao: extra.descricao || '',
+    slug: extra.slug || criarSlug(nome),
+    nome,
+    descricao: extra.descricao || doCheckout.descricao || '',
     preco: oferta.price?.value ?? null,
     moeda: oferta.price?.currency_code || 'BRL',
     assinatura: Boolean(p.is_subscription),
+    garantia: p.warranty_period ?? null,
     link: extra.link || checkout,
-    imagem: extra.imagem || (await imagemDoCheckout(checkout)),
+    imagem: extra.imagem || doCheckout.imagem || null,
     criado: p.created_at,
   });
 }
 
 vitrine.sort((a, b) => (b.criado ?? 0) - (a.criado ?? 0));
 
+// Slugs repetidos ganham o ID no final para não sobrescrever páginas.
+const usados = new Set();
+for (const p of vitrine) {
+  if (usados.has(p.slug)) p.slug = `${p.slug}-${p.id}`;
+  usados.add(p.slug);
+}
+
+const urlSite = descobrirUrlSite(config);
+const agora = new Date();
+
+await rm('site', { recursive: true, force: true });
 await mkdir('site', { recursive: true });
-await writeFile('site/index.html', renderPagina({
-  config,
-  produtos: vitrine,
-  urlSite: descobrirUrlSite(config),
-  agora: new Date(),
-}));
+await cp('assets', 'site/assets', { recursive: true });
+await writeFile('site/index.html', renderIndex({ config, produtos: vitrine, urlSite, agora }));
+for (const p of vitrine) {
+  const outros = vitrine.filter((o) => o.id !== p.id).slice(0, 4);
+  await mkdir(`site/produto/${p.slug}`, { recursive: true });
+  await writeFile(`site/produto/${p.slug}/index.html`, renderProduto({ config, produto: p, outros, urlSite, agora }));
+}
 await writeFile('site/produtos.json', JSON.stringify(vitrine, null, 2));
 
 console.log(`✔ Vitrine gerada com ${vitrine.length} produto(s):`);
 for (const p of vitrine) {
-  console.log(`  • [${p.id}] ${p.nome} — ${p.preco} ${p.moeda}${p.imagem ? '' : ' (sem imagem)'}`);
+  const faltando = [!p.imagem && 'sem imagem', !p.descricao && 'sem descrição'].filter(Boolean).join(', ');
+  console.log(`  • [${p.id}] ${p.nome} — ${p.preco} ${p.moeda} → produto/${p.slug}/${faltando ? ` (${faltando})` : ''}`);
 }
