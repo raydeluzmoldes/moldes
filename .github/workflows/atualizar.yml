@@ -1,0 +1,55 @@
+name: Atualizar vitrine
+
+on:
+  schedule:
+    - cron: "0 */6 * * *" # a cada 6 horas
+  workflow_dispatch: # botão "Run workflow" na aba Actions
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+  actions: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  gerar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Buscar produtos na Hotmart e gerar a página
+        run: node scripts/build.mjs
+        env:
+          HOTMART_CLIENT_ID: ${{ secrets.HOTMART_CLIENT_ID }}
+          HOTMART_CLIENT_SECRET: ${{ secrets.HOTMART_CLIENT_SECRET }}
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+  publicar:
+    needs: gerar
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
+
+  # O GitHub pausa agendamentos de repositórios sem atividade por 60 dias.
+  # Reativar o workflow pela API mantém a atualização automática funcionando.
+  manter-ativo:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/atualizar.yml/enable"
+        env:
+          GH_TOKEN: ${{ github.token }}
